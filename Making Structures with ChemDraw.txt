@@ -1,0 +1,13 @@
+Notes for creating structures with ChemDraw:
+
+1. Draw structure in ChemBioDraw. Be sure to check the double bonds if you have a conjugated system to make sure they're where they should be. You can check this by forcing the hydrogens to be shown. Select the structure. Go to Structure->Atom Properties->Implicit Hydrogens->Not allowed. This will show all the hydrogens. If you have ones where you don't expect any, check your bonding.
+
+2. Open Chem3D Pro
+
+3. In ChemBioDraw, select the structure (Ctrl+A) and copy it (Ctrl+C).
+
+4. Switch to Chem 3D Pro and paste (Ctrl+V). Your structure should appear in 3D.
+
+5. Save file as a Gaussian *.gjf file.
+
+6. Open the *.gjf file in Ampac and save as a *.dat file.

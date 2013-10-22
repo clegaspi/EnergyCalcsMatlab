@@ -1,0 +1,7 @@
+#	$Id: GMT_polar.cpt,v 1.1.1.1 2000/12/28 01:23:45 gmt Exp $
+#
+# Simulates the POLAR colormap in Matlab
+# COLOR_MODEL = RGB
+-1000	0	0	255	-1	255	255	255
+-1	255	255	255 1	255	255	255
+1	255	255	255 1000	255	0	0
