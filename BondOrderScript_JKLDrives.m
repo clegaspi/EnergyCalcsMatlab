@@ -1,13 +1,35 @@
-% %% DON'T RUN FROM HERE
-% 
-% while false
+%% Get already-run calcs with a given file prefix
+field = [];
 
-%% Run multiple molecules
+if (true)
+    fn = '8-merPPV-N2Optimized';
 
-mols = {'MeLPPP-13mer',.064,[1 186]};
+    
+    flist = dir('j:\NoAngle\*.mat');
+    for i = 1:length(flist)
+        fstr = regexpi(flist(i).name, ['^',fn,'-([0-9.]+)VA\.mat$'], 'tokens');
+        if (~isempty(fstr))
+            field(end+1) = str2double(fstr{1}{1});
+        end
+    end
+
+    field = sort(field,'ascend');
+
+    S = load(['j:\NoAngle\',fn,'-0VA.mat']);
+
+    mols = {fn,field(end),S.obj.axis_params};
+else
+
+
+%% If you didn't load the data from above, insert data to run here (or Run multiple molecules)
+    mols = {'15-merPPV-N2Optimized',.083,[3 118]};
+end
+
+%% Set other params and run
+
 nstates = 25;
 norbs = 1000;
-poolsize = 7;
+poolsize = 3;
 
 run_energy_calcs = false;
 load_data = true;
@@ -30,10 +52,11 @@ for imol = 1:size(mols, 1);
 %     system(['subst s: "',rootdir,SFolder,'"']);
 %     system(['subst o: "',rootdir,OFolder,'"']);
 %     system(['subst p: "',rootdir,PFolder,'"']);
-    
-     field = 0:0.001:mols{imol,2};
-     % field = [0:0.001:0.045, 0.0452:0.0002:0.065, 0.066:0.001:mols{imol,2}];
-        
+    if (isempty(field))
+        field = 0:0.001:mols{imol,2};
+        %field = [0:0.001:0.054, 0.0542:0.0002:0.083, 0.084:0.001:mols{imol,2}];
+        %field = [0:0.001:0.054, 0.0542:0.0002:mols{imol,2}];
+    end
 
 %% Are you loading pre-existing data? Set this to false.
 if (run_energy_calcs)    

@@ -2,20 +2,48 @@
 % 
 % while false
 
-%% Run multiple molecules
+%% Get already-run calcs with a given file prefix
+field = [];
+if (true)
+    fn = '17-merPPV';
 
-mols = {'8-merPPV-ampac101-N2Opt',.176,[59 62]};
-nstates = 25;
+    flist = dir('s:\NoAngle\*.mat');
+    for i = 1:length(flist)
+        fstr = regexpi(flist(i).name, ['^',fn,'-([0-9.]+)VA\.mat$'], 'tokens');
+        if (~isempty(fstr))
+            field(end+1) = str2double(fstr{1}{1});
+        end
+    end
+
+    field = sort(field,'ascend');
+
+    S = load(['s:\NoAngle\',fn,'-0VA.mat']);
+
+    mols = {fn,field(end),S.obj.axis_params};
+else
+
+
+% If you didn't load the data from above, insert data to run here (or Run multiple molecules)
+    mols = {'17-merPPV',.068,[3 134]};
+end
+
+%% Set other params and run
+
+sysvars = ECESysVars.getInstance('init','indo','c:\mscpp\demo-dci-working.exe');
+
+nstates = 10;
 norbs = 1000;
-poolsize = 3;
+poolsize = sysvars.getVars('poolsize');
 
-run_energy_calcs = true;
+run_energy_calcs = false;
 load_data = true;
 run_struct_opt = false;
 
 if (run_energy_calcs && matlabpool('size') == 0)
     matlabpool(poolsize);
 end
+
+ %% Do calculations
 
 for imol = 1:size(mols, 1);
 %     system('subst s: /d');
@@ -30,12 +58,14 @@ for imol = 1:size(mols, 1);
 %     system(['subst s: "',rootdir,SFolder,'"']);
 %     system(['subst o: "',rootdir,OFolder,'"']);
 %     system(['subst p: "',rootdir,PFolder,'"']);
-    
-     field = 0:0.001:mols{imol,2};
-     % field = [0:0.001:0.045, 0.0452:0.0002:0.065, 0.066:0.001:mols{imol,2}];
+    if (isempty(field))
+        field = 0:0.001:mols{imol,2};
+        %field = [0:0.001:0.054, 0.0542:0.0002:0.083, 0.084:0.001:mols{imol,2}];
+        %field = [0:0.001:0.054, 0.0542:0.0002:mols{imol,2}];
+    end
         
 
-%% Are you loading pre-existing data? Set this to false.
+%% Running calculations
 if (run_energy_calcs)    
 %% 
 
@@ -58,7 +88,7 @@ elseif (dblcmp(field(1),0))
     disp(num2str(field(k)));
 
     myece = ECEParams('AM1', {}, true, field(k), norbs, nstates,...
-        [pwd,'\data\params_for_all.txt']);
+        [pwd,'\..\data\params_for_all.txt']);
 
     myexp = EnergyCalcExp(myece,...
         ['s:\NoAngle\',mols{imol,1},'.dat'],...
@@ -67,7 +97,8 @@ elseif (dblcmp(field(1),0))
         'o:\',...
         'p:\',...
         false,...
-        ['MeLPPP-13mer Field calcs - ',num2str(field(k)),'VA']);
+        ['MeLPPP-13mer Field calcs - ',num2str(field(k)),'VA'],...
+        sysvars);
     myexp.run('quiet');
     
     no_field_dm = ['o:\', myexp.data(1).indo_hash, '-dm.bin'];
@@ -86,7 +117,7 @@ parfor pk = 2:numel(field)
         continue;
     else
         myece = ECEParams('AM1', {}, true, field(pk), norbs, nstates,...
-            [pwd,'\data\params_for_all.txt']);
+            [pwd,'\..\data\params_for_all.txt']);
 
         if (~isempty(no_field_dm))
             myece.dm_guess = no_field_dm;
@@ -100,7 +131,8 @@ parfor pk = 2:numel(field)
             'o:\',...
             'p:\',...
             false,...
-            ['MeLPPP-13mer Field Calcs - ',num2str(field(pk)),'VA']);
+            ['MeLPPP-13mer Field Calcs - ',num2str(field(pk)),'VA'],...
+            sysvars);
         pmyexp.run('quiet');
     end
 %     if (~exist('n','var'))
@@ -112,10 +144,13 @@ end
 %% Doing calcs? Terminate
 end
 % close(waithdl,'force');
-%% Skip data loading because you're doing BOBL opt? Set to false
+%% Loading data that's been calculated already 
+try     % If this fails, it will close the progress bar window and rethrow the error
 if (load_data)
-    
-%% Load data that's been calculated already
+
+S = load(['s:\NoAngle\',mols{imol,1},'-',num2str(field(1)),'VA.mat']);
+myexp = S.obj;
+nstates = length(myexp.data(1).Eexc);
 
 dp = zeros(1,length(field));
 dpgs = zeros(1,length(field));
@@ -155,6 +190,7 @@ for idx = 1:numel(field)
 
     S = load(['s:\NoAngle\',mols{imol,1},'-',num2str(field(idx)),'VA.mat']);
     myexp = S.obj;
+    myexp.data(1).update_paths('p:\','o:\');
     
     tmp = myexp.get_field('indo.dipole',1,1);
     dpgs(idx) = sum(tmp .^ 2, 1) .^ (0.5);
@@ -185,8 +221,8 @@ for idx = 1:numel(field)
     eexc(idx,1:nstates) = myexp.get_field('Eexc',:);
     igs(idx) = myexp.get_field('indo.esci',1);
     opint(idx,1:nstates) = myexp.get_field('Tint',:);
-%     tmp = squeeze(myexp.get_field('indo.r',2,:,:));  % From n=2
-%     midx = 2;  % for n=2
+    tmp = squeeze(myexp.get_field('indo.r',2,:,:));  % From n=2
+    midx = 2;  % for n=2
 %     for l = 1:nstates
 %         tmpeexc = eexc(idx,1:nstates);
 %         [~,midx] = max(opint(idx,1:nstates));
@@ -195,6 +231,7 @@ for idx = 1:numel(field)
 %     end
 %     
 end
+
 close(waithdl,'force');
 
 % Make all cells because cross-compatibility with code
@@ -225,14 +262,15 @@ exdp2exc = {exdp2exc};
 
 
 end
-
+catch excpt
+    if (exist('waithdl','var') && ishandle(waithdl))
+        close(waithdl,'force');
+    end
+    rethrow(excpt)
 end
-
-%% Skip structure opt? Debugging?
+%% Structure optimization 
 
 if (run_struct_opt)
-
-%% Do structure optimizations
 
 % fields_to_opt_struct = field;
 fields_to_opt_struct = 0;
@@ -321,6 +359,7 @@ end
 save(['s:\',mols{imol,1},'-BOScript-PaulingwithAM1.mat']);
 
 end
+end
 
 disp('Calculation finished');
 return;
@@ -336,15 +375,22 @@ if (~exist('nstates','var'))
     nstates = length(eexc{1,1}(k,:));
 end
 
+statesx = zeros(length(xaxis)*nstates,1);
+statesy = statesx;
 for k = 1:length(xaxis)
-    plot(xaxis(k), eexc{1,1}(k,1:nstates) + igs{1,1}(k) - igs{1,1}(1), 'g^');
+    statesx(((k-1)*nstates)+(1:nstates)) = xaxis(k);
+    statesy(((k-1)*nstates)+(1:nstates)) = eexc{1,1}(k,1:nstates) + igs{1,1}(k) - igs{1,1}(1);
 end
 
+ptshnd = plot(statesx, statesy, 'g.','MarkerSize',6);
+
+opinthnd = zeros(length(xaxis),nstates);
 maxopint = max(opint{1,1}(:));
 for k = 1:length(xaxis)
     for l = 1:nstates
-        if (opint{1,1}(k,l)*30/maxopint > 1)
-            plot(xaxis(k), eexc{1,1}(k,l) + igs{1,1}(k) - igs{1,1}(1), 'bo', 'MarkerSize', (opint{1,1}(k,l)*30 / maxopint) + 1e-3);
+        if (sqrt((opint{1,1}(k,l)*50 / maxopint)) > 1)
+            opinthnd(k,l) = plot(xaxis(k), eexc{1,1}(k,l) + igs{1,1}(k) - igs{1,1}(1), 'bo',...
+                'MarkerSize', sqrt((opint{1,1}(k,l)*50 / maxopint)) + 1e-3);
         end
     end
 end
@@ -446,36 +492,88 @@ figure(8);  % Need to have energy vs. field plotted here already
 get_slope_from_n2_after_cross = true;
 use_n2_at_zero_for_eb = true;
 hold_nofield_energy = false;
+clear_plots = false;
 
-if (exist('ebhnd','var') && ishandle(ebhnd))
-    delete(ebhnd);
+if (clear_plots)
+    if (exist('ebhndlin','var'))
+        for i = 1:length(ebhndlin)
+            delete(ebhndlin(i));
+        end
+    end
+    if (exist('ebhndquad','var'))
+        for i = 1:length(ebhndquad)
+            delete(ebhndquad(i));
+        end
+    end
 end
 
 figure(8);
 hold on;
 
 if (get_slope_from_n2_after_cross)
+    bail=false;
     dcm_obj = datacursormode(8);
     for i = 1:2
         disp(['Pick point ',num2str(i),' with the data cursor and then type return']);
         figure(8);
         keyboard;
+        if (bail)
+            return;
+        end
         info_struct = getCursorInfo(dcm_obj);
-        pts(i) = info_struct.Position(1);
+        x_pts(i) = info_struct.Position(1);
+        y_pts(i) = info_struct.Position(2);
     end
     
-    start_idx = find(field == pts(1));
-    end_idx = find(field == pts(2));
+    start_idx = find(field == x_pts(1));
+    end_idx = find(field == x_pts(2));
     
+    n_start = find(eexc{1}(start_idx,:)+ igs{1,1}(start_idx) - igs{1,1}(1)==y_pts(1));
+    n_end = find(eexc{1}(end_idx,:)+ igs{1,1}(end_idx) - igs{1,1}(1)==y_pts(2));
+    
+    if (n_start ~= n_end)
+        disp('State n values are not the same for range selected!');
+        return;
+    end
     x = field(start_idx:end_idx)';
-    y = eexc{1}(start_idx:end_idx,2) + igs{1,1}(start_idx:end_idx)' - igs{1,1}(1);
+    y = eexc{1}(start_idx:end_idx,n_start) + igs{1,1}(start_idx:end_idx)' - igs{1,1}(1);
 else
-    [x,y] = ginput(3);
+    % [x,y] = ginput(3);
+    dcm_obj = datacursormode(8);
+    done = false;
+    bail = false;
+    dontinclude = false;
+    ii=1;
+    x=[];
+    y=[];
+    while ~done
+        disp(['Pick point ',num2str(ii),' with the data cursor and then type return']);
+        figure(8);
+        keyboard;
+        if (bail)
+            return;
+        end
+        if (~dontinclude || ~done)
+            info_struct = getCursorInfo(dcm_obj);
+            x(ii) = info_struct.Position(1);
+            y(ii) = info_struct.Position(2);
+            ii=ii+1;
+        end
+    end
 end
 
 fit = polyfit(x,y,1);
 m = fit(1);
+yint = fit(2);
+
+fit = polyfit(x,y,2);
+a = fit(1);
 b = fit(2);
+c = fit(3);
+
+cubicfit = polyfit(x,y,3);
+quartfit = polyfit(x,y,4);
+fivefit = polyfit(x,y,5);
 
 if (~hold_nofield_energy || ~exist('eby','var'))
     if (use_n2_at_zero_for_eb)
@@ -485,11 +583,24 @@ if (~hold_nofield_energy || ~exist('eby','var'))
     end
 end
 
-ebenergy = b-eby;
+ebenergy = yint-eby;
 
-ebhnd = plot(xaxis, m .* xaxis + b, 'k-');
+if (exist('ebhndlin','var'))
+    plotnum = length(ebhndlin)+1;
+else
+    plotnum = 1;
+end
+figure(8);
+% ebhndlin(plotnum) = plot(xaxis, m .* xaxis + yint, 'k-');
+% ebhndquad(plotnum) = plot(xaxis, a.*xaxis.^2 + b.*xaxis + c, 'r-');
+% plot(xaxis, cubicfit(1).*xaxis.^3 + cubicfit(2).*xaxis.^2 + cubicfit(3).*xaxis + cubicfit(4), 'c-');
+% plot(xaxis, quartfit(1).*xaxis.^4 + quartfit(2).*xaxis.^3 + quartfit(3).*xaxis.^2 + quartfit(4).*xaxis + quartfit(5), 'k-');
+plot(xaxis, fivefit(1).*xaxis.^5 + fivefit(2).*xaxis.^4 + ...
+    fivefit(3).*xaxis.^3 + fivefit(4).*xaxis.^2 + fivefit(5).*xaxis + fivefit(6), 'r-');
+% plot(xaxis, sixfit(1).*xaxis.^6 + sixfit(2).*xaxis.^5 + ...
+%    sixfit(3).*xaxis.^4 + sixfit(4).*xaxis.^3 + sixfit(5).*xaxis.^2 + sixfit(6).*xaxis + sixfit(7), 'r-');
 
-disp(['The equation of the line is ',num2str(m),'x + ',num2str(b)]);
+disp(['The equation of the line is ',num2str(m),'x + ',num2str(yint)]);
 disp(['The dipole moment of this state is ',num2str(-m),' e-A (',num2str(-m*4.802456),' D)']);
 disp(['The exciton binding energy is approximately ', num2str(ebenergy), ' eV']);
 
@@ -642,20 +753,23 @@ ylabel('Bond Length Alternation (Angstroms)');
 
 fignum = 5;
 exciton = false;
-mol_name = '8-merPPV-N2Opt';
+mol_name = '17-merPPV';
 
 pick_a_point = true;
 % If pick_a_point, the following will be overwritten
 field_strength = 0;
-state_n = 2;
+state_n = 22;
 
 % Put how your y-axis is plotted here. Otherwise set y_offset = 0 for
 % absolute energies.
 S = load(['s:\NoAngle\',mol_name,'-0VA.mat']);
 myexp = S.obj;
+myexp.data(1).update_paths('p:\','o:\');
 myexp.data(1).load_to_memory('indo','load');
 myindo = myexp.data(1).raw_indo;
 y_offset = myindo.esci(1);
+
+centroid_offset = [0 0 11];
 
 % Graphing charge density
 binsize = 2;    % Angstroms. +- amount for bin capture
@@ -681,7 +795,7 @@ end
 
 S = load(['s:\NoAngle\',mol_name,'-',num2str(field_strength),'VA.mat']);
 myexp = S.obj;
-
+myexp.data(1).update_paths('p:\','o:\');
 myexp.data(1).load_to_memory('indo','load');
 myindo = myexp.data(1).raw_indo;
 
@@ -717,11 +831,13 @@ end
 
 % esdm = gsdm + deltadm;
 
-% Uses a similar script to extract the Cartesian coords of using openbabel. atom_type contains the chemical symbol of each atom
-myexp.data(1).generate_ampac_file('out','p:\');
-[xyz, atom_type] = ampac_to_xyz(['p:\', myexp.data(1).ampac_hash, '.out']); % Ground state
-zmat = ampac_to_zmatrix(['p:\', myexp.data(1).ampac_hash, '.out']);
-% atomsbonds = get_connectivity(['p:\', myexp.data(1).ampac_hash, '.out']); % Takes path to mopac/ampac file
+% Get cartesian coordinates from ampac
+if (~exist('last_mol_run','var') || ~strcmpi(myexp.data(1).ampac_hash, last_mol_run))
+    myexp.data(1).generate_ampac_file('out','p:\');
+    [xyz, atom_type] = ampac_to_xyz(['p:\', myexp.data(1).ampac_hash, '.out']); % Ground state
+    zmat = ampac_to_zmatrix(['p:\', myexp.data(1).ampac_hash, '.out']);
+    last_mol_run = myexp.data(1).ampac_hash;
+end
 
 % Mulliken charge
 mchg = zeros(1,length(xyz));
@@ -767,7 +883,6 @@ figure(fignum)
 hold on;
 axis equal;
 axis([min(rot_xyz(:,1))-1 max(rot_xyz(:,1))+1 min(rot_xyz(:,2))-1 max(rot_xyz(:,2))+1 min(rot_xyz(:,3))-1 max(rot_xyz(:,3))+1]);
-camorbit(0,270);
 cptcmap('scaled_mulliken','mapping','direct')
 
 scatter3(rot_xyz(:,1),rot_xyz(:,2),rot_xyz(:,3),120,mchg*1e3/max(abs(mchg)),'o','filled','MarkerEdgeColor','k')
@@ -785,7 +900,7 @@ if (tdv(2) > 0)
 else
     carr = [1 0 0];
 end
-harr = arrow(centroid+[0 0 10],centroid'+[0 0 10]'+rotmat*tdv','Width',3,'FaceColor',carr);
+harr = arrow(centroid+centroid_offset,centroid'+centroid_offset'+rotmat*tdv','Width',3,'FaceColor',carr);
 
 % Graph of spatial distribution of charges
 

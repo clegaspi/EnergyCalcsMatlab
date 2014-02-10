@@ -1,5 +1,11 @@
 function newzmatrix = distort_geometry(zmatrix, ring_info, newblsbyatom, varargin)
-    AmpacEXE = 'C:\Program Files\Semichem, Inc\Ampac-10.1\ampac.exe';    
+    if (~ECE_system_vars('check'))
+        ECE_system_vars('setall');
+    end
+
+    global AMPACEXE;
+    AmpacEXE = AMPACEXE;
+    
     newzmatrix = zmatrix;
     natoms = size(zmatrix, 1);
     rings = {ring_info.rings};

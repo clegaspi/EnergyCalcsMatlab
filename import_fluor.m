@@ -1,4 +1,4 @@
-function [Wavelengthnm,VarName2] = import_fluor(filename, startRow, endRow)
+function [wl,cps] = import_fluor(filename, startRow, endRow)
 %IMPORTFILE Import numeric data from a text file as column vectors.
 %   [WAVELENGTHNM,VARNAME2] = IMPORTFILE(FILENAME) Reads data from text
 %   file FILENAME for the default selection.
@@ -20,27 +20,36 @@ if nargin<=2
     endRow = inf;
 end
 
+%% Open the text file.
+fileID = fopen(filename,'r');
+
+%% Figure out how many spectra are contained in this file
+
+firstline = textscan(fileID, '%s',1,'delimiter','\n');
+frewind(fileID);
+nexpts = regexpi(firstline{1},'Expt\s+(\d+),*\s*$','tokens');
+
+if (isempty(nexpts{1}))
+    nexpts = 1;
+else
+    nexpts = str2double(nexpts{1}{1});
+    startRow = 3;
+end
+
 %% Format string for each line of text:
 %   column1: double (%f)
 %	column2: double (%f)
 % For more information, see the TEXTSCAN documentation.
-formatSpec = '%f%f%[^\n\r]';
-
-%% Open the text file.
-fileID = fopen(filename,'r');
+formatSpec = '%[^\n\r]';
+for i = 1:nexpts
+    formatSpec = ['%f%f' formatSpec];
+end
 
 %% Read columns of data according to format string.
 % This call is based on the structure of the file used to generate this
 % code. If an error occurs for a different file, try regenerating the code
 % from the Import Tool.
 dataArray = textscan(fileID, formatSpec, endRow(1)-startRow(1)+1, 'Delimiter', delimiter, 'HeaderLines', startRow(1)-1, 'ReturnOnError', false);
-for block=2:length(startRow)
-    frewind(fileID);
-    dataArrayBlock = textscan(fileID, formatSpec, endRow(block)-startRow(block)+1, 'Delimiter', delimiter, 'HeaderLines', startRow(block)-1, 'ReturnOnError', false);
-    for col=1:length(dataArray)
-        dataArray{col} = [dataArray{col};dataArrayBlock{col}];
-    end
-end
 
 %% Close the text file.
 fclose(fileID);
@@ -52,6 +61,10 @@ fclose(fileID);
 % script.
 
 %% Allocate imported array to column variable names
-Wavelengthnm = dataArray{:, 1};
-VarName2 = dataArray{:, 2};
+wl = zeros(length(dataArray{1}),nexpts);
+cps = zeros(length(dataArray{1}),nexpts);
+for i = 1:nexpts
+    wl(:,i) = dataArray{2*i-1};
+    cps(:,i) = dataArray{2*i};
+end
 

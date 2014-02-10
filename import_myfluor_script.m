@@ -1,10 +1,10 @@
-uiippath = 'C:\Users\clegaspi\Google Drive\Experimental Data\Fluorometer\092413';
-fn = 'methft';
-fignum = 12;
+path = 'C:\Users\clegaspi\Google Drive\Experimental Data\Fluorometer\112113\2TD1X';
+fn = '2tdeb';
+fignum = 10;
 wavenum = 0;
 
 legend_str = 'Ex ';
-wl_range = 200:10:600;
+wl_range = 200:10:450;
 n = length(wl_range);
 
 %%
@@ -22,22 +22,41 @@ for i = 1:n
 end
 
 %%
+if (ishandle(fignum))
+    clf(fignum,'reset');
+end
 figure(fignum);
 hold on
 color = 'rgbkmc';
 pattern = {'-',':','--','-.','-',':','--','-.'};
 
 
-for i = 1:10
+for i = 1:n
     if (wavenum)
         x = 1e7./wl{i};
     else
         x = wl{i};
     end
-    plot(x,data{i}, 'LineStyle', pattern{floor((i-1)/length(color))+1} , 'LineWidth', 2, ...
+    
+    nidx = find(x == 350);
+    x = x(nidx:end);
+    y = data{i}(nidx:end);
+    
+    nval = 1;
+    % nidx = find(x == 439);
+    % nval = data{i}(nidx);
+    nval = max(y);
+    
+%     if (isempty(nval))
+%         continue
+%     end
+    y=y./nval;
+    
+    plot(x,y, 'LineStyle', pattern{floor((i-1)/length(color))+1} , 'LineWidth', 2, ...
         'Color',color(mod(i-1,length(color))+1),...
         'DisplayName', [legend_str, num2str(wl_range(i))]);
-    if (i==21)
+%    line(repmat(1e7/(1e7/wl_range(i) + 3000),[1 2]),[min(data{i}) max(data{i})]);
+    if (i==1)
         legend('show','-DynamicLegend');
     end
 end

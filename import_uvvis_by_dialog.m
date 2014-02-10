@@ -1,6 +1,11 @@
 %% Import data
 fignum = 11;
 wavenum = 0;
+
+epsilon = 0;
+conc = 1.0e-5.*[1 2 3 5 10];  % Molarity
+path_length = repmat(1.0,[1 5]);  % Centimeters
+
 if (~exist('abs_last_path', 'var'))
     abs_last_path = pwd;
 end
@@ -63,7 +68,12 @@ for i = 1:length(fn)
     else
         x = abswl{i};
     end
-    plot(x,absdata{i}, 'LineStyle', pattern{floor((i-1)/length(color))+1} , 'LineWidth', 2, ...
+    if (epsilon)
+        y = absdata{i} ./ (path_length(i) * conc(i));
+    else
+        y = absdata{i};
+    end
+    plot(x,y, 'LineStyle', pattern{floor((i-1)/length(color))+1} , 'LineWidth', 2, ...
         'Color',color(mod(i-1,length(color))+1),...
         'DisplayName', sampname);
 end
@@ -73,5 +83,9 @@ if (wavenum)
 else
     xlabel('Wavelength (nm)');
 end
-ylabel('Absorbance (AU)');
+if (epsilon)
+    ylabel('Extinction \epsilon (M^{-1} cm^{-1})');
+else
+    ylabel('Absorbance (AU)');
+end
 legend('show');

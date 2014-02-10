@@ -2,16 +2,8 @@ function [ xyz, atom_type ] = ampac_to_xyz( input )
 %AMPAC_TO_XYZ Summary of this function goes here
 %   Detailed explanation goes here
 
-    % OpenBabelEXE = 'C:\Program Files (x86)\OpenBabel-2.3.2\babel.exe';
-    ampacexe = 'C:\Program Files\Semichem, Inc.\Ampac-10.1\ampac.exe';
-    
-    if (~exist(ampacexe, 'file'))
-        if (exist('C:\Program Files (x86)\Semichem, Inc.\Ampac-10.1\ampac.exe', 'file'))
-            ampacexe = 'C:\Program Files (x86)\Semichem, Inc.\Ampac-10.1\ampac.exe';
-        else
-            throw(MException('ampac_to_xyz:AmpacNotFound', 'ampac_to_xyz: AMPAC EXE not found. Please edit.'));
-        end
-    end
+    sysvars = ECESysVars.getInstance;
+    ampacexe = sysvars.getVars('ampac');
     
     if (iscell(input))
         zmatrix = input;

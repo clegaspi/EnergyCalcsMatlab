@@ -31,8 +31,7 @@ classdef Indo < handle
         ehsci       % (i,1) hole of the ith SCI basis function (0 if GS)
         % (i,2) = elec of the ith SCI basis function (0 if GS)
 
-        indoExe = '"c:\mscpp\demo-dci-working.exe"';
-        % indoExe = '"c:\mscpp\demo-dci\Release\demo-dci.exe"';
+        indoExe;    % Path to INDO exe
     end % properties
     properties (Transient)
         osc         % (1,i) oscillator strength from gs to state i
@@ -159,7 +158,8 @@ classdef Indo < handle
         end
     end
     methods       
-        function res = Indo(ConfigIn, dataPathIn, jobNameIn, varargin)
+        function res = Indo(ConfigIn, dataPathIn, jobNameIn, dataPathOut, jobNameOut, sysvars)
+            
             if (nargin < 1)
                 res.config = Indo.defaultConfig();
             else
@@ -178,13 +178,21 @@ classdef Indo < handle
             if (nargin < 4)
                 res.dataPathOut = res.dataPathIn;
             else
-                res.dataPathOut = varargin{1};
+                res.dataPathOut = dataPathOut;
             end
             if (nargin < 5)
                 res.jobNameOut = res.jobNameIn;
             else
-                res.jobNameOut = varargin{2};
+                res.jobNameOut = jobNameOut;
             end
+            if (nargin < 6)
+                sysvars = ECESysVars.getInstance;
+                warning('off','ECESysVars:AlreadyInit');
+                sysvars.initialize;
+                warning('on','ECESysVars:AlreadyInit');
+            end
+            res.indoExe = ['"',sysvars.getVars('indo'),'"'];
+            
             if (nargin > 0)
 %                 jobstring = [res.indoExe,' "',res.dataPath,'\',res.jobName,'"', ...
 %                     ' ',num2str(res.config.charge), ...

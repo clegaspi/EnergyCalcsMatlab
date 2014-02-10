@@ -39,7 +39,8 @@ classdef EnergyCalcExp < handle
         fail_iterator;          % unsigned int: keeps track of the next index available in fail_bucket.
                                 % length(fail_bucket) = m = fail_iterator - 1
         
-        ampacexe = '"c:\Program Files\Semichem, Inc\Ampac-10.1\ampac.exe"';    % Path to the AMPAC executable, including " marks
+        sysvars;                % Contains paths to ampac and indo and other info for the system that runs this calculation
+        ampacexe;               % Ampac path with leading and trailing " marks
     end
     
     properties (SetAccess = public)
@@ -371,14 +372,8 @@ classdef EnergyCalcExp < handle
 % Output:  
 %       obj: EnergyCalcExp object. The constructed object.
 %--------------------------------------------------------------------------------------------------%
-        function obj = EnergyCalcExp(parameters, mol, axis_params, MAT, indo, ampac, load_libs, varargin)
-            if (~exist('c:\Program Files\Semichem, Inc\Ampac-10.1\ampac.exe','file'))
-                if (exist('c:\Program Files (x86)\Semichem, Inc\Ampac-10.1\ampac.exe','file'))
-                    obj.ampacexe = '"c:\Program Files (x86)\Semichem, Inc\Ampac-10.1\ampac.exe"';
-                else
-                    throw(MException('EnergyCalcExp:InvalidAmpacPath','EnergyCalcExp: Cannot find AMPAC! Update path'));
-                end
-            end
+        function obj = EnergyCalcExp(parameters, mol, axis_params, MAT, indo, ampac, load_libs, description, sysvars)
+            
             if (nargin > 4)
                 % pause(0.02); % Hard drive delay catch-up...
                 if (~exist(mol,'file'))
@@ -390,10 +385,18 @@ classdef EnergyCalcExp < handle
                 obj.MATFilename = MAT;
                 obj.molecule = mol;
                 obj.axis_params = axis_params;
+                obj.description = description;
                 
-                if (~isempty(varargin))
-                    obj.description = varargin{1};
+                if (~isempty(sysvars))
+                    obj.sysvars = sysvars;
+                else
+                    obj.sysvars = ECESysVars.getInstance;
+                    warning('off','ECESysVars:AlreadyInit');
+                    obj.sysvars.initialize;
+                    warning('on','ECESysVars:AlreadyInit');
                 end
+                
+                obj.ampacexe = ['"',sysvars.getVars('ampac'),'"'];
 
                 if (indo(end) ~= '\')
                     indo = [indo, '\'];
@@ -665,7 +668,7 @@ classdef EnergyCalcExp < handle
                                 tmp_indo_path = tmp_indo_path(1:end-1);
                             end
 
-                            indo = Indo(indoparams, tmp_ampac_path, ampac.hash, tmp_indo_path, indo_out.hash);
+                            indo = Indo(indoparams, tmp_ampac_path, ampac.hash, tmp_indo_path, indo_out.hash, obj.sysvars);
 % 
 %                             if (indoparams.output_dm)
 %                                 movefile([obj.ampacdatapath, ampac.hash, '-dm.bin'], ...
@@ -1501,7 +1504,7 @@ classdef EnergyCalcExp < handle
                             tmp_indo_path = tmp_indo_path(1:end-1);
                         end
                         
-                        indo = Indo(indoparams, tmp_ampac_path, ampac.hash, tmp_indo_path, indo_out.hash);
+                        indo = Indo(indoparams, tmp_ampac_path, ampac.hash, tmp_indo_path, indo_out.hash, obj.sysvars);
                         
                         indo_out.indo = indo;
                         

@@ -15,9 +15,9 @@ function [ varargout ] = closest_member( a, myset )
     [b,ix] = sort(myset,'ascend');
     
     for i = 1:length(b)
-        if (b(i) < a)
+        if (b(i) < a && i < length(b))
             continue;
-        elseif (b(i) == a)
+        elseif (b(i) == a || (b(i) < a && i == length(b)))
             varargout{1} = b(i);
             switch nargout
                 case 2

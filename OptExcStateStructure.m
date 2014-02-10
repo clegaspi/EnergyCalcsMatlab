@@ -4,10 +4,12 @@ function [rgs, rex, deltar, newzmatrix, ampac_energy, indo, varargout] = ...
     
 % ampac_pathonly = 'C:\Users\Christian\Documents\Research\Yaron\dyes2\data\DMG-8mer\';
 % ampac_nameonly = '8-merPPVampac';
-    
-    % EXECUTABLE PATHWAYS, NO QUOTES
-    AmpacEXE = 'C:\Program Files\Semichem, Inc\Ampac-10.1\ampac.exe';
-    OpenBabelEXE = 'C:\Program Files (x86)\OpenBabel-2.3.2\babel.exe';
+    if (~ECE_system_vars('check'))
+        ECE_system_vars('setall');
+    end
+
+    global AMPACEXE;
+    AmpacEXE = AMPACEXE;
     
     
     indoidx = find(cellfun(@(x)isequal(lower(x),'indo'), varargin));

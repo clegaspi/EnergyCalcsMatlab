@@ -8,8 +8,8 @@ if (nargout > 2)
     varargout{1} = raw{1}(1:end-2);
 end
 
-for i = length(raw)-1:-1:3
-    if (isempty(raw{i}))
+for i = 3:length(raw)
+    if (isempty(regexp(raw{i},'^\s*[0-9\.]+,[0-9\.\-EeDd]+,*\s*$','match')))
         raw = raw(3:i-1);
         break;
     end

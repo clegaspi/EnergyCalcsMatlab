@@ -8,7 +8,8 @@ system('subst p: /d');
 
 %% Load substituted drives
 
-rootdir = fullfile(pwd,'data\8-merPPV-newampac\Coupling');
+rootdir = fullfile(pwd,'..\data\17-merPPV\');
+% rootdir = fullfile('C:\Users\clegaspi\Documents\MATLAB\data\13-merPPV\');
 SFolder = 'Exp';
 OFolder = 'INDOLib';
 PFolder = 'GSLib';
@@ -18,7 +19,12 @@ if (rootdir(end) ~= '\')
 end
 
 if (~exist(rootdir,'dir'))
-    mkdir(rootdir);
+    response = questdlg('This directory does not exist. Create?','Dir DNE','Yes','No','Yes');
+    if (strcmp(response,'Yes'))
+        mkdir(rootdir);
+    else
+        return;
+    end
 end
 if (~exist([rootdir,SFolder],'dir'))
     mkdir([rootdir,SFolder]);
@@ -46,7 +52,7 @@ system('subst l: /d');
 
 %% Load substituted drives
 
-rootdir = 'C:\Users\clegaspi\Documents\MATLAB\data\MeLPPP-13mer\';
+rootdir = fullfile(pwd,'..\data\PFH-13mer-N2Opt\');
 SFolder = 'Exp';
 OFolder = 'INDOLib';
 PFolder = 'GSLib';
@@ -56,7 +62,12 @@ if (rootdir(end) ~= '\')
 end
 
 if (~exist(rootdir,'dir'))
-    mkdir(rootdir);
+    response = questdlg('This directory does not exist. Create?','Dir DNE','Yes','No','Yes');
+    if (strcmp(response,'Yes'))
+        mkdir(rootdir);
+    else
+        return;
+    end
 end
 if (~exist([rootdir,SFolder],'dir'))
     mkdir([rootdir,SFolder]);
