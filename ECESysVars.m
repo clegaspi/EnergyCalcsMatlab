@@ -1,0 +1,236 @@
+classdef (Sealed) ECESysVars < handle
+    %UNTITLED Summary of this class goes here
+    %   Detailed explanation goes here
+    properties (Access = private)
+        initialized;
+        INDOEXE;
+        AMPACEXE;
+        DEFAULT_POOL_SIZE;
+        ECE_DATA_PATH;
+        FORTRAN;
+    end
+    
+    methods (Access = private)
+        function obj = ECESysVars
+            obj.initialized = false;
+        end
+        function isok = fortran(obj,varargin)
+            getvars = ~isempty(find(cellfun(@(x)strcmpi(x,'get'), varargin),1)) || nargin == 1;
+            % checkvars = ~isempty(find(cellfun(@(x)strcmpi(x,'check'), varargin),1));
+            setvars = ~isempty(find(cellfun(@(x)strcmpi(x,'set'), varargin),1));
+            
+            if (~getvars)
+                if (isempty(getenv('F_EM64T_REDIST11')) && isempty(getenv('F_IA32_REDIST11')) && isempty(getenv('F_IA64_REDIST11')))
+                    isok = 0;
+                else
+                    isok = 1;
+                end
+
+                if (setvars)
+                    obj.FORTRAN = isok;
+                end
+            else
+                isok = obj.FORTRAN;     % This is 'check'
+            end
+        end
+        function isok = ampac(obj,varargin)
+            getvars = (nargin == 1);
+            setvars = 0;
+            checkvars = 0;
+            if (nargin > 1)
+                getvars = strcmpi(varargin{1},'get') || nargin == 1;
+                checkvars = strcmpi(varargin{1},'check');
+                setvars = strcmpi(varargin{1},'set');
+            end
+            
+            if (setvars)
+                if (nargin > 2)
+                    if (exist(varargin{2},'file'))
+                        obj.AMPACEXE = varargin{2};
+                    else
+                        throw(MException('ECE_SYSTEM_VARS:NoAmpac','ECE_SYSTEM_VARS: AMPAC not found!'));
+                    end
+                else
+                    if (exist('c:\Program Files\Semichem, Inc.\Ampac-10.1\ampac.exe','file'))
+                        obj.AMPACEXE = 'c:\Program Files\Semichem, Inc.\Ampac-10.1\ampac.exe';
+                    elseif (exist('c:\Program Files (x86)\Semichem, Inc.\Ampac-10.1\ampac.exe','file'))
+                        obj.AMPACEXE = 'c:\Program Files (x86)\Semichem, Inc.\Ampac-10.1\ampac.exe';
+                    else
+                        throw(MException('ECE_SYSTEM_VARS:NoAmpac','ECE_SYSTEM_VARS: AMPAC not found!'));
+                    end
+                end
+                isok = 1;
+            end
+                
+            if (checkvars)
+                isok = exist(obj.AMPACEXE,'file') > 0;
+            end                        
+            
+            if (getvars)
+                isok = obj.AMPACEXE;
+            end
+        end
+        function isok = indo(obj,varargin)
+            getvars = (nargin == 1);
+            setvars = 0;
+            checkvars = 0;
+            if (nargin > 1)
+                getvars = strcmpi(varargin{1},'get') || nargin == 1;
+                checkvars = strcmpi(varargin{1},'check');
+                setvars = strcmpi(varargin{1},'set');
+            end
+            
+            if (setvars)
+                if (nargin > 2)
+                    if (exist(varargin{2},'file'))
+                        obj.INDOEXE = varargin{2};
+                    else
+                        throw(MException('ECE_SYSTEM_VARS:NoIndo','ECE_SYSTEM_VARS: INDO not found!'));
+                    end
+                else
+                    if (exist('c:\mscpp\demo-dci\Release\demo-dci.exe','file'))
+                        obj.INDOEXE = 'c:\mscpp\demo-dci\Release\demo-dci.exe';
+                    else
+                        throw(MException('ECE_SYSTEM_VARS:NoINDO','ECE_SYSTEM_VARS: INDO not found!'));
+                    end
+                end
+                isok = 1;
+            end
+                
+            if (checkvars)
+                isok = exist(obj.INDOEXE,'file') > 0;
+            end                        
+            
+            if (getvars)
+                isok = obj.AMPACEXE;
+            end
+        end
+        function isok = poolsize(obj,varargin)
+            getvars = (nargin == 1);
+            setvars = 0;
+            checkvars = 0;
+            if (nargin > 1)
+                getvars = strcmpi(varargin{1},'get') || nargin == 1;
+                checkvars = strcmpi(varargin{1},'check');
+                setvars = strcmpi(varargin{1},'set');
+            end
+            
+            if (setvars)
+                if (nargin > 2)
+                    nproc = str2double(getenv('NUMBER_OF_PROCESSORS'));
+                    if (isnumeric(varargin{2}) && varargin{2} <= nproc && varargin{2} > 0)
+                        obj.DEFAULT_POOL_SIZE = int32(varargin{2});
+                    else
+                        throw(MException('ECE_SYSTEM_VARS:InvalidPool','ECE_SYSTEM_VARS: Invalid pool size!'));
+                    end
+                else
+                    obj.DEFAULT_POOL_SIZE = str2double(getenv('NUMBER_OF_PROCESSORS')) - 1;
+                end
+                isok = 1;
+            end
+                
+            if (checkvars)
+                nproc = str2double(getenv('NUMBER_OF_PROCESSORS'));
+                isok = (isnumeric(obj.DEFAULT_POOL_SIZE) && obj.DEFAULT_POOL_SIZE <= nproc && obj.DEFAULT_POOL_SIZE > 0);
+            end                        
+            
+            if (getvars)
+                isok = obj.DEFAULT_POOL_SIZE;
+            end
+        end
+    end
+    methods
+        function result = isInitialized(obj)
+            result = obj.initialized;
+        end
+        function output_args = initialize(obj,varargin)
+            if (obj.initialized)
+                warning('ECESysVars:AlreadyInit','ECESysVars: You must run deleteInstance() or clear the workspace before re-initializing!');
+                return;
+            end
+            
+            setall = ~isempty(find(cellfun(@(x)strcmpi(x,'setall'), varargin),1));
+
+            indoidx = find(cellfun(@(x)strcmpi(x,'indo'), varargin));
+            ampacidx = find(cellfun(@(x)strcmpi(x,'ampac'), varargin));
+            poolidx = find(cellfun(@(x)strcmpi(x,'poolsize'), varargin));
+            
+            if (~isempty(indoidx))
+                obj.indo('set',varargin{indoidx+1});
+            else
+                obj.indo('set');
+            end
+            if (~isempty(ampacidx))
+                obj.ampac('set',varargin{ampacidx+1});
+            else
+                obj.ampac('set');
+            end
+            if (~isempty(poolidx))
+                obj.poolsize('set',varargin{poolidx+1});
+            else
+                obj.poolsize('set');
+            end
+            
+            obj.fortran('set');
+            
+            obj.initialized = 1;
+        end
+        function sysVarsOut = getVars(obj,varargin)
+            if (~obj.isInitialized)
+                throw(MException('ECE_SYSTEM_VARS:ObjNotInitialized','ECESysVars: No object has been initialized!'));
+            end
+            
+            if (nargin == 1)
+                getall = true;
+            else
+                getall = ~isempty(find(cellfun(@(x)strcmpi(x,'all'), varargin),1));
+                ampac = ~isempty(find(cellfun(@(x)strcmpi(x,'ampac'), varargin),1));
+                indo = ~isempty(find(cellfun(@(x)strcmpi(x,'indo'), varargin),1));
+                poolsize = ~isempty(find(cellfun(@(x)strcmpi(x,'poolsize'), varargin),1));
+                fortran = ~isempty(find(cellfun(@(x)strcmpi(x,'fortran'), varargin),1));
+            end
+                
+            if (getall || ampac)
+                sysVarsOut.ampac = obj.AMPACEXE;
+            end
+            if (getall || indo)
+                sysVarsOut.indo = obj.INDOEXE;
+            end
+            if (getall || poolsize)
+                sysVarsOut.poolsize = obj.DEFAULT_POOL_SIZE;
+            end
+            if (getall || fortran)
+                sysVarsOut.fortran = obj.FORTRAN;
+            end
+            
+            if (length(fieldnames(sysVarsOut)) == 1)
+                sysVarsOut = cell2mat(struct2cell(sysVarsOut));
+            end
+        end
+    end
+    methods (Static)
+        function singleObj = getInstance(varargin)
+            persistent localObj
+            
+            delinst = ~isempty(find(cellfun(@(x)strcmpi(x,'delete'), varargin),1));
+            initinst = ~isempty(find(cellfun(@(x)strcmpi(x,'init'), varargin),1));
+            
+            if (delinst)
+                clear('localObj');
+                return
+            end
+            
+            if isempty(localObj) || ~isvalid(localObj)
+                localObj = ECESysVars;
+            end
+            
+            if (initinst)
+                localObj.initialize(varargin{2:end});
+            end
+            
+            singleObj = localObj;
+        end
+    end
+    
+end
+
